@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Xưởng Clip</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Bricolage+Grotesque:wght@700;800&family=Space+Mono:wght@400;700&display=swap">
+<style>
+/* Layout: control strip on top, then a 9:16 frame preview beside the post fields, routine and history below. */
+:root {
+  --bg: #EBEFF3;
+  --surface: #F8FAFB;
+  --fg: #121C26;
+  --muted: #55636F;
+  --line: #CBD4DC;
+  --accent: #D81F5A;
+  --on-accent: #FFFFFF;
+  --teal: #0E7C86;
+  --chip: #DDE4EA;
+  --font-display: "Bricolage Grotesque", "Be Vietnam Pro", system-ui, sans-serif;
+  --font-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Space Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E151B; --surface: #17212A; --fg: #E6EDF2; --muted: #93A2AE; --line: #2A3945;
+    --accent: #FF4D84; --on-accent: #1A0610; --teal: #3CC4CE; --chip: #223039;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E151B; --surface: #17212A; --fg: #E6EDF2; --muted: #93A2AE; --line: #2A3945;
+  --accent: #FF4D84; --on-accent: #1A0610; --teal: #3CC4CE; --chip: #223039;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-block: 20px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+h1, h2 { font-family: var(--font-display); margin: 0; text-wrap: balance; line-height: 1.1; }
+h1 { font-size: clamp(28px, 6vw, 40px); font-weight: 800; letter-spacing: -0.02em; }
+h2 { font-size: 19px; font-weight: 700; }
+.label { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.mono { font-family: var(--font-mono); }
+
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; }
+.hd-left { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.date { color: var(--muted); font-size: 14px; }
+.streak { display: flex; align-items: baseline; gap: 8px; padding: 8px 14px; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; }
+.streak b { font-family: var(--font-mono); font-size: 22px; color: var(--accent); font-variant-numeric: tabular-nums; }
+.streak span { color: var(--muted); font-size: 13px; }
+
+.controls { display: flex; flex-direction: column; gap: 14px; padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.row > .label { width: 100%; }
+.chip, .seg button, .btn, .copy {
+  font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--chip); color: var(--fg); min-height: 40px; padding: 0 14px;
+}
+.chip[aria-pressed="true"], .seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.seg { display: flex; flex-wrap: wrap; gap: 8px; }
+.seg button { font-family: var(--font-mono); min-width: 56px; padding: 0 10px; }
+.btn { font-weight: 600; min-height: 46px; padding: 0 20px; }
+.btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.btn.ghost { background: transparent; }
+.btn.good { background: var(--teal); color: var(--bg); border-color: var(--teal); }
+button:focus-visible, textarea:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+.btn:active, .chip:active, .copy:active { transform: translateY(1px); }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+.stage { display: grid; grid-template-columns: minmax(0, 290px) minmax(0, 1fr); gap: 22px; align-items: start; }
+@media (max-width: 760px) { .stage { grid-template-columns: minmax(0, 1fr); } .frame-col { align-items: center; } }
+.frame-col { display: flex; flex-direction: column; gap: 10px; }
+.frame {
+  --g1: #3a2a1a; --g2: #120a05; --glow: #ffb347;
+  position: relative; width: 100%; max-width: 290px; aspect-ratio: 9 / 16; border-radius: 16px; overflow: hidden;
+  background:
+    radial-gradient(ellipse 70% 40% at 50% 62%, var(--glow), transparent 70%),
+    linear-gradient(180deg, var(--g1), var(--g2));
+  color: #fff; display: flex; flex-direction: column; justify-content: space-between; padding: 14px;
+  border: 1px solid var(--line);
+}
+.frame::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 45%, rgba(0,0,0,.62)); pointer-events: none; }
+.frame > * { position: relative; z-index: 1; }
+.tag { align-self: flex-start; font-family: var(--font-mono); font-size: 11px; padding: 3px 8px; border-radius: 6px; background: rgba(0,0,0,.4); }
+.horizon { position: absolute !important; left: 0; right: 0; top: 62%; height: 1px; background: rgba(255,255,255,.35); z-index: 1; }
+.frame .scene { font-size: 13px; line-height: 1.4; opacity: .92; text-wrap: balance; }
+.frame .on-screen { font-family: var(--font-display); font-weight: 800; font-size: 20px; line-height: 1.15; text-wrap: balance; text-shadow: 0 1px 8px rgba(0,0,0,.5); overflow-wrap: anywhere; }
+.frame-meta { font-size: 13px; color: var(--muted); max-width: 290px; width: 100%; }
+
+.fields { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.field { display: flex; flex-direction: column; gap: 6px; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; min-width: 0; }
+.field-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.field-top .count { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-left: auto; }
+.copy { min-height: 34px; padding: 0 12px; font-size: 13px; font-weight: 500; }
+textarea {
+  width: 100%; resize: none; border: 0; background: transparent; color: var(--fg);
+  font: inherit; line-height: 1.55; padding: 0; overflow: hidden; display: block;
+}
+textarea.en { font-family: var(--font-mono); font-size: 13px; line-height: 1.6; }
+textarea.tags { color: var(--teal); }
+
+.below { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+@media (max-width: 760px) { .below { grid-template-columns: minmax(0, 1fr); } }
+.panel { display: flex; flex-direction: column; gap: 12px; padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; min-width: 0; }
+ol.steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; }
+ol.steps li::marker { font-family: var(--font-mono); color: var(--accent); font-weight: 700; }
+.note { font-size: 13px; color: var(--muted); margin: 0; }
+.hist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.hist button { width: 100%; text-align: left; font: inherit; color: var(--fg); background: var(--chip); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; min-height: 44px; }
+.hist .when { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.hist .ttl { overflow-wrap: anywhere; }
+a.btn { display: inline-flex; align-items: center; text-decoration: none; }
+.hist li { display: flex; gap: 8px; }
+.hist li > button:first-child { flex: 1; min-width: 0; }
+.hist .x { width: auto; flex: none; align-items: center; justify-content: center; padding: 0 12px; }
+.empty { color: var(--muted); font-size: 14px; margin: 0; }
+
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 14px; z-index: 20; max-width: calc(100% - 32px); }
+@media (prefers-reduced-motion: no-preference) {
+  .frame { transition: background .4s; }
+  .toast { animation: pop .18s ease-out; }
+  @keyframes pop { from { opacity: 0; transform: translate(-50%, 6px); } }
+}
+[hidden]{display:none!important}
+body{margin:0}
+img{max-width:100%}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="hd-left">
+      <span class="label">Mỗi ngày một clip AI cho TikTok</span>
+      <h1>Xưởng Clip</h1>
+      <span class="date" id="today"></span>
+    </div>
+    <div class="streak" title="Số ngày liên tiếp đã đánh dấu đăng"><b id="streak">0</b><span>ngày liên tiếp</span></div>
+  </header>
+
+  <section class="controls" aria-label="Tùy chọn">
+    <div class="row" id="niches"><span class="label">Chủ đề</span></div>
+    <div class="row"><span class="label">Độ dài (giây)</span><div class="seg" id="durs"></div></div>
+    <div class="actions">
+      <button class="btn primary" id="btn-random" type="button">Tạo ngẫu nhiên</button>
+      <button class="btn ghost" id="btn-daily" type="button">Ý tưởng hôm nay</button>
+    </div>
+  </section>
+
+  <section class="stage">
+    <div class="frame-col">
+      <div class="frame" id="frame" role="img" aria-label="Khung xem trước clip dọc 9:16">
+        <span class="tag" id="f-tag">AI · 8s · 9:16</span>
+        <div class="horizon"></div>
+        <div>
+          <p class="scene" id="f-scene" style="margin:0 0 10px"></p>
+          <div class="on-screen" id="f-title"></div>
+        </div>
+      </div>
+      <div class="frame-meta"><span class="mono" id="f-code"></span><br><span id="f-mood"></span></div>
+    </div>
+
+    <div class="fields">
+      <div class="field">
+        <div class="field-top"><span class="label">Prompt cho công cụ video AI</span><span class="count" id="c-prompt"></span><button class="copy" data-for="prompt" type="button">Sao chép</button></div>
+        <textarea id="prompt" class="en" rows="4" spellcheck="false"></textarea>
+      </div>
+      <div class="field">
+        <div class="field-top"><span class="label">Tiêu đề</span><span class="count" id="c-title"></span><button class="copy" data-for="title" type="button">Sao chép</button></div>
+        <textarea id="title" rows="2"></textarea>
+      </div>
+      <div class="field">
+        <div class="field-top"><span class="label">Caption</span><span class="count" id="c-caption"></span><button class="copy" data-for="caption" type="button">Sao chép</button></div>
+        <textarea id="caption" rows="3"></textarea>
+      </div>
+      <div class="field">
+        <div class="field-top"><span class="label">Hashtag</span><button class="copy" data-for="tags" type="button">Sao chép</button></div>
+        <textarea id="tags" class="tags" rows="2" spellcheck="false"></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="btn-make" type="button">Tạo video</button>
+        <button class="btn" id="btn-save" type="button">Lưu ý tưởng</button>
+      </div>
+      <div class="field" id="tools" hidden>
+        <span class="label">Đã sao chép prompt. Dán vào một công cụ:</span>
+        <div class="actions">
+          <a class="btn ghost" href="https://sora.com" target="_blank" rel="noopener">Sora</a>
+          <a class="btn ghost" href="https://klingai.com" target="_blank" rel="noopener">Kling</a>
+          <a class="btn ghost" href="https://runwayml.com" target="_blank" rel="noopener">Runway</a>
+          <a class="btn ghost" href="https://gemini.google.com" target="_blank" rel="noopener">Gemini (Veo)</a>
+        </div>
+        <p class="note">Video được dựng trên trang của công cụ đó, tùy công cụ có thể cần tài khoản hoặc gói trả phí. Dựng xong, tải video về rồi đăng lên TikTok.</p>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" id="btn-copypost" type="button">Sao chép caption + hashtag</button>
+        <button class="btn good" id="btn-posted" type="button">Đánh dấu đã đăng hôm nay</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="below">
+    <div class="panel">
+      <h2>Quy trình mỗi ngày</h2>
+      <ol class="steps">
+        <li>Bấm <b>Ý tưởng hôm nay</b> hoặc <b>Tạo ngẫu nhiên</b>. Thích thì bấm <b>Lưu ý tưởng</b>.</li>
+        <li>Bấm <b>Tạo video</b>: prompt được sao chép, rồi chọn công cụ AI và dán vào. Chọn tỉ lệ dọc 9:16.</li>
+        <li>Tải video lên TikTok, bật nhãn nội dung do AI tạo, dán caption và hashtag.</li>
+        <li>Quay lại đây và bấm <b>Đánh dấu đã đăng hôm nay</b> để giữ chuỗi ngày.</li>
+      </ol>
+      <p class="note">Trang này tạo ý tưởng, prompt và nội dung bài đăng. Nó không tự dựng video và không tự đăng lên TikTok.</p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:22px;min-width:0">
+    <div class="panel">
+      <h2>Ý tưởng đã lưu</h2>
+      <ul class="hist" id="saved"></ul>
+      <p class="empty" id="saved-empty">Bấm "Lưu ý tưởng" để giữ lại cảnh bạn thích.</p>
+    </div>
+    <div class="panel">
+      <h2>Đã đăng gần đây</h2>
+      <ul class="hist" id="hist"></ul>
+      <p class="empty" id="hist-empty">Chưa có clip nào. Đánh dấu clip đầu tiên sau khi đăng.</p>
+      <div class="actions" id="hist-actions" hidden>
+        <button class="btn ghost" id="btn-clear" type="button">Xóa lịch sử</button>
+      </div>
+    </div>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var NICHES = {
+    nature: {
+      label: "Thiên nhiên",
+      subjects: [
+        { en: "a lone red fox", vi: "chú cáo đỏ" },
+        { en: "a giant sea turtle", vi: "chú rùa biển khổng lồ" },
+        { en: "a snow leopard", vi: "con báo tuyết" },
+        { en: "two wild horses", vi: "hai chú ngựa hoang" },
+        { en: "a flock of white cranes", vi: "đàn sếu trắng" }
+      ],
+      scenes: [
+        { en: "moving slowly through a pine forest covered in fresh snow at dawn", vi: "di chuyển chậm rãi trong rừng thông phủ tuyết lúc bình minh" },
+        { en: "crossing shallow turquoise water lit by sunbeams", vi: "băng qua vùng nước xanh ngọc có nắng xuyên xuống" },
+        { en: "crossing a misty mountain lake", vi: "băng qua mặt hồ sương mù giữa núi" },
+        { en: "pausing beside a waterfall in a mossy forest", vi: "dừng chân bên thác nước trong rừng phủ rêu" },
+        { en: "passing under a stone bridge in gentle rain", vi: "đi dưới cây cầu đá trong cơn mưa nhẹ" }
+      ],
+      tags: ["#thiennhien", "#dongvathoangda", "#cinematic", "#rungsau"]
+    },
+    food: {
+      label: "Ẩm thực",
+      subjects: [
+        { en: "a street food vendor", vi: "người bán hàng rong" },
+        { en: "a tiny robot chef", vi: "chú robot đầu bếp tí hon" },
+        { en: "an elderly grandmother", vi: "bà cụ" },
+        { en: "a young baker", vi: "cô thợ làm bánh trẻ" },
+        { en: "two kids", vi: "hai em nhỏ" }
+      ],
+      scenes: [
+        { en: "cooking crispy bánh xèo on a sizzling pan in a lantern-lit alley", vi: "nấu bánh xèo giòn rụm trong con hẻm treo đèn lồng" },
+        { en: "pulling a perfect noodle string from a bubbling pot", vi: "kéo sợi mì hoàn hảo từ nồi nước sôi" },
+        { en: "decorating a tiered cake with edible flowers", vi: "trang trí chiếc bánh nhiều tầng bằng hoa ăn được" },
+        { en: "flipping golden pancakes high into the air", vi: "tung những chiếc bánh vàng ươm lên cao" },
+        { en: "pouring thick caramel over fresh fruit in slow motion", vi: "rưới caramel đặc lên trái cây tươi thật chậm" }
+      ],
+      tags: ["#amthuc", "#monngon", "#foodtiktok", "#nauan"]
+    },
+    scifi: {
+      label: "Viễn tưởng",
+      subjects: [
+        { en: "an astronaut", vi: "phi hành gia" },
+        { en: "a tiny dragon", vi: "chú rồng nhỏ" },
+        { en: "a glass robot", vi: "người máy bằng thủy tinh" },
+        { en: "a floating jellyfish spirit", vi: "linh hồn sứa lơ lửng" },
+        { en: "a time-traveling cat", vi: "chú mèo du hành thời gian" }
+      ],
+      scenes: [
+        { en: "walking across a neon desert under two moons", vi: "đi qua sa mạc neon dưới hai mặt trăng" },
+        { en: "exploring an abandoned library overgrown with glowing plants", vi: "khám phá thư viện bỏ hoang mọc đầy cây phát sáng" },
+        { en: "riding a train through the clouds at sunset", vi: "ngồi tàu xuyên qua biển mây lúc hoàng hôn" },
+        { en: "wandering a floating market above a futuristic city", vi: "dạo chợ nổi trên không của thành phố tương lai" },
+        { en: "stepping through a portal into a crystal cave", vi: "bước qua cổng không gian vào hang pha lê" }
+      ],
+      tags: ["#vientuong", "#scifi", "#aiart", "#fantasy"]
+    },
+    pets: {
+      label: "Thú cưng",
+      subjects: [
+        { en: "a fluffy corgi", vi: "chú corgi lông xù" },
+        { en: "a tabby kitten", vi: "chú mèo vằn con" },
+        { en: "a golden retriever puppy", vi: "chú chó golden con" },
+        { en: "a baby panda", vi: "chú gấu trúc con" },
+        { en: "a sleepy hamster", vi: "chú hamster buồn ngủ" }
+      ],
+      scenes: [
+        { en: "wearing a tiny raincoat and splashing in puddles", vi: "mặc áo mưa nhỏ xíu và nhảy trong vũng nước" },
+        { en: "chasing soap bubbles in a sunny backyard", vi: "đuổi theo bong bóng xà phòng trong khu vườn đầy nắng" },
+        { en: "napping inside a cardboard castle", vi: "ngủ trưa trong lâu đài bằng bìa carton" },
+        { en: "riding a toy train around a small pine tree", vi: "ngồi tàu đồ chơi quanh cây thông nhỏ" },
+        { en: "learning to skateboard in an empty parking lot", vi: "tập trượt ván trong bãi xe vắng" }
+      ],
+      tags: ["#thucung", "#cutelife", "#petsoftiktok", "#dethuong"]
+    },
+    city: {
+      label: "Thành phố",
+      subjects: [
+        { en: "a cyclist", vi: "người đạp xe" },
+        { en: "a street musician", vi: "nghệ sĩ đường phố" },
+        { en: "a girl with a yellow umbrella", vi: "cô gái cầm ô vàng" },
+        { en: "a delivery rider", vi: "anh shipper" },
+        { en: "an old man holding a paper kite", vi: "ông lão cầm diều giấy" }
+      ],
+      scenes: [
+        { en: "crossing a rain-soaked intersection under neon signs", vi: "băng qua ngã tư ướt mưa dưới biển đèn neon" },
+        { en: "riding through empty streets just before sunrise", vi: "đi qua những con phố vắng trước bình minh" },
+        { en: "passing a flower market in the morning light", vi: "đi ngang chợ hoa trong nắng sớm" },
+        { en: "waiting at a quiet tram stop at dusk", vi: "đợi ở trạm tàu điện yên tĩnh lúc chiều muộn" },
+        { en: "walking over a bridge above a glowing river", vi: "đi trên cây cầu bắc qua dòng sông lấp lánh" }
+      ],
+      tags: ["#thanhpho", "#streetlife", "#cityvibes", "#dailylife"]
+    },
+    calm: {
+      label: "Thư giãn",
+      subjects: [
+        { en: "colorful kinetic sand", vi: "cát động học nhiều màu" },
+        { en: "molten gold", vi: "vàng nóng chảy" },
+        { en: "pastel paint", vi: "sơn màu pastel" },
+        { en: "soft clouds of foam", vi: "đám bọt mềm như mây" },
+        { en: "glittering water droplets", vi: "giọt nước lấp lánh" }
+      ],
+      scenes: [
+        { en: "flowing in slow motion over a smooth marble surface", vi: "chảy chậm trên mặt đá cẩm thạch mịn" },
+        { en: "being sliced cleanly in perfect symmetry", vi: "được cắt đều đặn đối xứng hoàn hảo" },
+        { en: "swirling into a perfect spiral inside a glass bowl", vi: "xoáy thành hình xoắn ốc trong bát thủy tinh" },
+        { en: "falling onto a mirror and rippling outward", vi: "rơi xuống mặt gương và lan thành gợn sóng" },
+        { en: "stacking into a tall tower that never falls", vi: "xếp thành tòa tháp cao không đổ" }
+      ],
+      tags: ["#thugian", "#satisfying", "#oddlysatisfying", "#asmr"]
+    }
+  };
+
+  var CAMERAS = [
+    "slow dolly-in", "smooth tracking shot", "low-angle hero shot",
+    "top-down drone shot slowly rising", "macro close-up with shallow depth of field", "handheld follow shot"
+  ];
+  var LIGHTS = [
+    { en: "golden hour light", vi: "giờ vàng", g: ["#5a3a1c", "#150b05", "#ffb347"] },
+    { en: "soft overcast light", vi: "ánh sáng dịu", g: ["#4b5864", "#10161b", "#cfd8df"] },
+    { en: "neon-lit night", vi: "đêm neon", g: ["#3a1450", "#08040f", "#ff3d9a"] },
+    { en: "misty blue dawn", vi: "bình minh sương xanh", g: ["#1f4a63", "#07141c", "#8fd3e8"] },
+    { en: "warm candle glow", vi: "ánh nến ấm", g: ["#5c2a12", "#120805", "#ff8a3d"] },
+    { en: "moonlit blue tones", vi: "ánh trăng xanh", g: ["#17285c", "#05081a", "#7fa2ff"] }
+  ];
+  var STYLES = [
+    "cinematic 35mm film look", "hyper-realistic 4K", "hand-painted watercolor animation",
+    "claymation stop-motion look", "dreamy surreal with vivid colors"
+  ];
+  var TITLE_TPL = [
+    "{S} {C} – xem đến giây cuối nhé",
+    "Không ngờ {S} lại {C}",
+    "Cảnh hôm nay: {S} {C}",
+    "POV: bạn thấy {S} {C}",
+    "{S} {C} và cái kết bất ngờ",
+    "1 phút bình yên: {S} {C}"
+  ];
+  var CTAS = [
+    "Theo dõi để xem clip mới mỗi ngày nhé!",
+    "Mai bạn muốn xem cảnh gì? Bình luận cho mình biết!",
+    "Lưu lại để xem khi cần thư giãn nhé."
+  ];
+  var COMMON_TAGS = ["#fyp", "#xuhuong", "#aivideo", "#aigenerated"];
+  var DAYS = ["Chủ nhật", "Thứ hai", "Thứ ba", "Thứ tư", "Thứ năm", "Thứ sáu", "Thứ bảy"];
+  var DURS = [5, 8, 10, 15];
+  var KEY = "xuong-clip-v1";
+  var SKEY = "xuong-clip-saved-v1";
+
+  function hashStr(s) {
+    var h = 1779033703 ^ s.length;
+    for (var i = 0; i < s.length; i++) { h = Math.imul(h ^ s.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
+    return function () {
+      h = Math.imul(h ^ (h >>> 16), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909);
+      return (h ^= h >>> 16) >>> 0;
+    };
+  }
+  function rngFrom(seed) {
+    var a = hashStr(seed)();
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function pick(r, arr) { return arr[Math.floor(r() * arr.length)]; }
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+  function dateKey(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+
+  function generate(seed, nicheKey, dur) {
+    var r = rngFrom(seed);
+    var keys = Object.keys(NICHES);
+    var nk = nicheKey === "all" ? pick(r, keys) : nicheKey;
+    var n = NICHES[nk];
+    var subj = pick(r, n.subjects), scene = pick(r, n.scenes);
+    var cam = pick(r, CAMERAS), light = pick(r, LIGHTS), style = pick(r, STYLES);
+    var tpl = pick(r, TITLE_TPL), cta = pick(r, CTAS);
+    var tagPool = n.tags.slice(), extra = [];
+    while (extra.length < 3 && tagPool.length) extra.push(tagPool.splice(Math.floor(r() * tagPool.length), 1)[0]);
+    var title = cap(tpl.replace("{S}", subj.vi).replace("{C}", scene.vi));
+    var prompt = cap(cam) + ": " + subj.en + " " + scene.en + ". " + cap(light.en) + ", " + style +
+      ". Vertical 9:16 video, " + dur + " seconds, smooth natural motion, one continuous shot, no text overlays, no watermark.";
+    var caption = "Cảnh " + light.vi + ": " + subj.vi + " " + scene.vi + ". Clip này do AI tạo ra.\n" + cta;
+    var tags = COMMON_TAGS.slice(0, 3).concat(extra).join(" ");
+    return { seed: seed, nicheKey: nicheKey, niche: nk, dur: dur, prompt: prompt, title: title, caption: caption, tags: tags,
+      scene: cap(subj.vi) + " " + scene.vi, light: light };
+  }
+
+  function load() { try { var v = JSON.parse(localStorage.getItem(KEY)); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+  function loadSaved() { try { var v = JSON.parse(localStorage.getItem(SKEY)); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+  function persistSaved() { try { localStorage.setItem(SKEY, JSON.stringify(state.saved)); } catch (e) {} }
+  function save(list) { try { localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) {} }
+
+  var state = { mode: "daily", nicheKey: "all", dur: 8, idea: null, history: load(), saved: loadSaved() };
+  var $ = function (id) { return document.getElementById(id); };
+  var els = { prompt: $("prompt"), title: $("title"), caption: $("caption"), tags: $("tags") };
+
+  function dailySeed() { return "d" + dateKey(new Date()) + "|" + state.nicheKey; }
+  function randomSeed() { return "r" + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3); }
+
+  function grow(ta) { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px"; }
+  function counts() {
+    $("c-prompt").textContent = els.prompt.value.length + " ký tự";
+    $("c-title").textContent = els.title.value.length + " ký tự";
+    $("c-caption").textContent = els.caption.value.length + "/2200";
+    $("f-title").textContent = els.title.value;
+    ["prompt", "title", "caption", "tags"].forEach(function (k) { grow(els[k]); });
+  }
+
+  function render(idea) {
+    state.idea = idea;
+    els.prompt.value = idea.prompt; els.title.value = idea.title;
+    els.caption.value = idea.caption; els.tags.value = idea.tags;
+    var f = $("frame");
+    f.style.setProperty("--g1", idea.light.g[0]); f.style.setProperty("--g2", idea.light.g[1]); f.style.setProperty("--glow", idea.light.g[2]);
+    $("f-scene").textContent = idea.scene;
+    $("f-tag").textContent = "AI · " + idea.dur + "s · 9:16";
+    $("f-code").textContent = (idea.seed.charAt(0) === "d" ? "Hôm nay · " : "Mã · ") + idea.seed.split("|")[0].slice(0, 12);
+    $("f-mood").textContent = NICHES[idea.niche].label + " · " + idea.light.vi;
+    counts();
+  }
+
+  function makeIdea() {
+    var seed = state.mode === "daily" ? dailySeed() : randomSeed();
+    render(generate(seed, state.nicheKey, state.dur));
+  }
+
+  function toast(msg) {
+    var t = $("toast"); t.textContent = msg; t.hidden = false;
+    clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 1800);
+  }
+  function copy(text, ta, okMsg) {
+    function fallback() {
+      try { if (ta) { ta.focus(); ta.select(); } var ok = document.execCommand("copy"); toast(ok ? okMsg : "Chọn văn bản rồi sao chép thủ công"); }
+      catch (e) { toast("Chọn văn bản rồi sao chép thủ công"); }
+    }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { toast(okMsg); }, fallback);
+      else fallback();
+    } catch (e) { fallback(); }
+  }
+
+  function streakCount() {
+    var set = {}; state.history.forEach(function (h) { set[h.date] = true; });
+    var d = new Date(); if (!set[dateKey(d)]) d.setDate(d.getDate() - 1);
+    var n = 0; while (set[dateKey(d)]) { n++; d.setDate(d.getDate() - 1); }
+    return n;
+  }
+
+  function renderHistory() {
+    var ul = $("hist"); ul.textContent = "";
+    var list = state.history.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; }).slice(0, 14);
+    list.forEach(function (h) {
+      var li = document.createElement("li"), b = document.createElement("button"), w = document.createElement("span"), t = document.createElement("span");
+      b.type = "button"; w.className = "when"; t.className = "ttl";
+      var p = h.date.split("-"); w.textContent = p[2] + "/" + p[1] + "/" + p[0] + " · " + (NICHES[h.niche] ? NICHES[h.niche].label : "");
+      t.textContent = h.title; b.appendChild(w); b.appendChild(t);
+      b.addEventListener("click", function () {
+        state.nicheKey = h.nicheKey || "all"; state.dur = h.dur || 8; state.mode = h.seed.charAt(0) === "d" ? "daily" : "random";
+        syncControls(); render(generate(h.seed, state.nicheKey, state.dur)); window.scrollTo({ top: 0, behavior: "smooth" });
+        toast("Đã mở lại clip này");
+      });
+      li.appendChild(b); ul.appendChild(li);
+    });
+    $("hist-empty").hidden = list.length > 0; $("hist-actions").hidden = list.length === 0;
+    $("streak").textContent = streakCount();
+  }
+
+  function renderSaved() {
+    var ul = $("saved"); ul.textContent = "";
+    state.saved.forEach(function (s, i) {
+      var li = document.createElement("li"), b = document.createElement("button"), w = document.createElement("span"),
+        t = document.createElement("span"), x = document.createElement("button");
+      b.type = "button"; w.className = "when"; t.className = "ttl";
+      x.type = "button"; x.className = "x"; x.textContent = "Xóa"; x.setAttribute("aria-label", "Xóa ý tưởng đã lưu");
+      var p = s.date.split("-"); w.textContent = p[2] + "/" + p[1] + "/" + p[0] + " · " + (NICHES[s.niche] ? NICHES[s.niche].label : "");
+      t.textContent = s.title; b.appendChild(w); b.appendChild(t);
+      b.addEventListener("click", function () {
+        state.nicheKey = s.nicheKey || "all"; state.dur = s.dur || 8; state.mode = s.seed.charAt(0) === "d" ? "daily" : "random";
+        syncControls(); render(generate(s.seed, state.nicheKey, state.dur));
+        els.prompt.value = s.prompt; els.title.value = s.title; els.caption.value = s.caption; els.tags.value = s.tags; counts();
+        window.scrollTo({ top: 0, behavior: "smooth" }); toast("Đã mở ý tưởng đã lưu");
+      });
+      x.addEventListener("click", function () { state.saved.splice(i, 1); persistSaved(); renderSaved(); toast("Đã xóa"); });
+      li.appendChild(b); li.appendChild(x); ul.appendChild(li);
+    });
+    $("saved-empty").hidden = state.saved.length > 0;
+  }
+
+  function buildControls() {
+    var row = $("niches");
+    var all = [["all", "Tất cả"]].concat(Object.keys(NICHES).map(function (k) { return [k, NICHES[k].label]; }));
+    all.forEach(function (p) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.k = p[0]; b.textContent = p[1];
+      b.addEventListener("click", function () { state.nicheKey = p[0]; syncControls(); makeIdea(); });
+      row.appendChild(b);
+    });
+    DURS.forEach(function (d) {
+      var b = document.createElement("button"); b.type = "button"; b.dataset.d = d; b.textContent = d;
+      b.addEventListener("click", function () { state.dur = d; syncControls(); render(generate(state.idea.seed, state.idea.nicheKey, d)); });
+      $("durs").appendChild(b);
+    });
+  }
+  function syncControls() {
+    document.querySelectorAll("#niches .chip").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.k === state.nicheKey)); });
+    document.querySelectorAll("#durs button").forEach(function (b) { b.setAttribute("aria-pressed", String(+b.dataset.d === state.dur)); });
+  }
+
+  buildControls();
+  var now = new Date();
+  $("today").textContent = DAYS[now.getDay()] + ", " + pad(now.getDate()) + "/" + pad(now.getMonth() + 1) + "/" + now.getFullYear();
+  syncControls(); makeIdea(); renderHistory(); renderSaved();
+
+  $("btn-random").addEventListener("click", function () { state.mode = "random"; makeIdea(); });
+  $("btn-daily").addEventListener("click", function () { state.mode = "daily"; makeIdea(); toast("Ý tưởng của hôm nay"); });
+  Object.keys(els).forEach(function (k) { els[k].addEventListener("input", counts); });
+  document.querySelectorAll(".copy").forEach(function (b) {
+    b.addEventListener("click", function () { var ta = els[b.dataset["for"]]; copy(ta.value, ta, "Đã sao chép"); });
+  });
+  $("btn-make").addEventListener("click", function () {
+    $("tools").hidden = false;
+    copy(els.prompt.value, els.prompt, "Đã sao chép prompt. Dán vào công cụ video AI");
+    $("tools").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
+  $("btn-save").addEventListener("click", function () {
+    var i = state.idea;
+    state.saved.unshift({ date: dateKey(new Date()), seed: i.seed, nicheKey: i.nicheKey, niche: i.niche, dur: i.dur,
+      title: els.title.value, prompt: els.prompt.value, caption: els.caption.value, tags: els.tags.value });
+    state.saved = state.saved.slice(0, 30); persistSaved(); renderSaved(); toast("Đã lưu ý tưởng");
+  });
+  $("btn-copypost").addEventListener("click", function () {
+    var text = els.caption.value + "\n\n" + els.tags.value;
+    var tmp = document.createElement("textarea"); tmp.value = text; tmp.style.cssText = "position:fixed;opacity:0;left:-9999px"; document.body.appendChild(tmp);
+    copy(text, tmp, "Đã sao chép caption + hashtag"); setTimeout(function () { document.body.removeChild(tmp); }, 600);
+  });
+  $("btn-posted").addEventListener("click", function () {
+    var today = dateKey(new Date()), i = idx(today);
+    var entry = { date: today, seed: state.idea.seed, nicheKey: state.idea.nicheKey, niche: state.idea.niche, dur: state.idea.dur, title: els.title.value };
+    if (i >= 0) state.history[i] = entry; else state.history.push(entry);
+    save(state.history); renderHistory(); toast("Đã ghi nhận clip hôm nay");
+  });
+  function idx(d) { for (var i = 0; i < state.history.length; i++) if (state.history[i].date === d) return i; return -1; }
+  var armed = false;
+  $("btn-clear").addEventListener("click", function () {
+    var b = $("btn-clear");
+    if (!armed) { armed = true; b.textContent = "Bấm lần nữa để xóa hết"; setTimeout(function () { armed = false; b.textContent = "Xóa lịch sử"; }, 3000); return; }
+    armed = false; b.textContent = "Xóa lịch sử"; state.history = []; save(state.history); renderHistory(); toast("Đã xóa lịch sử");
+  });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(counts);
+})();
+</script>
+
+</body>
+</html>
